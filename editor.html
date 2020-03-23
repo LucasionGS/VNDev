@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./src/style.css">
+  <script src="./src/vndev.js"></script>
+  <title>Document</title>
+</head>
+<header>
+  <table>
+    <tr>
+      <th>File</th>
+      <th>Edit</th>
+      <th>View</th>
+      <th>Insert</th>
+      <th>Run</th>
+      <th>Help</th>
+    </tr>
+  </table>
+</header>
+<body>
+  <div id="sidebar">
+    <div id="project">
+      <h3 class="panelTitle">Project - Scenes</h3>
+      <div id="scenes">
+        <label onclick="confirm('yes?')">Menu</label>
+        <label>Beginning</label>
+        <label>Intro</label>
+        <label>Scene1
+          <ul id="objectList">
+          <li class="gameObject">Len</li>
+          <li class="gameObject">Shinonome</li>
+          <li class="gameObject">Uzume</li>
+          <li class="gameObject">Ruka</li>
+        </ul></label>
+      </div>
+    </div>
+    <div id="properties">
+      <h3 class="panelTitle">Properties</h3>
+      <div id="propertiesList"></div>
+    </div>
+  </div>
+</body>
+</html>

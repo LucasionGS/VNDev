@@ -1,0 +1,15 @@
+{
+  "name": "vndev",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "dependencies": {
+    "electron": "^8.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "electron ."
+  },
+  "author": "Lucasion",
+  "license": "ISC"
+}
