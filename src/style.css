@@ -101,3 +101,8 @@ div#sidebar div#properties{
   font-size: 20px;
   border-bottom: solid 1px white;
 }
+
+/* Workspace */
+div#workspace div#canvas {
+  background-color: whitesmoke;
+}
