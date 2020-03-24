@@ -1,7 +1,18 @@
 // Requirements
 const fs = require("fs");
 const Electron = require("electron");
-const {dialog, BrowserWindow} = Electron.remote;
+// Pull modules from Electron.
+const {
+  remote: {
+    dialog,
+    BrowserWindow,
+    Menu
+  },
+} = Electron;
+/**
+ * Main Window
+ */
+const win = Electron.remote.getCurrentWindow();
 
 /**
  * Core of the editor.
@@ -28,8 +39,9 @@ class Game {
 
   /**
    * @param {string} projectName 
+   * @param {Game.Memory["settings"]} settings 
    */
-  static initializeProject(projectName) {
+  static initializeProject(projectName, settings = null) {
     if (!fs.existsSync(Game.projectsDir)) {
       fs.mkdirSync(Game.projectsDir);
     }
@@ -40,7 +52,7 @@ class Game {
     else {
       if (
             dialog.showMessageBoxSync(
-            BrowserWindow.getFocusedWindow(),
+            win,
             {
               "title": "This project already exists.",
               "message": "Do you want to overwrite it?\nThis cannot be undone.",
@@ -68,30 +80,40 @@ class Game {
 
     // Create Files
     Game.newScene("Scene1");
+    if (typeOf(settings) == "object")
+    fs.writeFileSync(Game.projectsDir + "/" + projectName + "/general", JSON.stringify(settings, null, 2));
   }
 
   /**
    * Create a new scene in this project.
    * @param {string} sceneName 
    */
-  static newScene(sceneName) {
+  static newScene(sceneName = "Scene") {
     // Create files
-    let data = JSON.parse(JSON.stringify(Game.formats.scene));
     let otherScenes = Game.getScenes();
+    let sceneAlt = 0;
+    let finalSceneName = sceneName;
+    while (fs.existsSync(Game.projectsDir + "/" + Game.projectName + `/scenes/${finalSceneName}.json`)) {
+      sceneAlt++;
+      finalSceneName = sceneName + sceneAlt;
+    }
+
+    let data = new Scene({"name": finalSceneName});
 
     data.index = otherScenes.length;
-    fs.writeFileSync(Game.projectsDir + "/" + Game.projectName + `/scenes/${sceneName}.json`, JSON.stringify(data));
+    fs.writeFileSync(Game.projectsDir + "/" + Game.projectName + `/scenes/${finalSceneName}.json`, JSON.stringify(data, null, 2));
+    Game.loadProjectScenes();
   }
 
   /**
    * Name of the current scene.
    * @type {string}
    */
-  get sceneName() {
+  static get sceneName() {
     return Game.Memory.sceneName;
   }
 
-  set sceneName(value) {
+  static set sceneName(value) {
     Game.Memory.sceneName = value;
     Game.displayObjectLists();
   }
@@ -110,7 +132,8 @@ class Game {
     },
 
     "settings": {
-
+      "width": 1280,
+      "height": 768,
     }
   }
 
@@ -138,22 +161,33 @@ class Game {
       }
       ul.appendChild(li);
     }
-    scene.appendChild(ul)
+    scene.appendChild(ul);
+    scene.scrollIntoView();
   }
 
   static saveScene() {
-    fs.writeFileSync(Game.projectsDir + "/" + Game.projectName + "/scenes/" + Game.Memory.sceneName + ".json", JSON.stringify(Game.Memory.scene));
+    const s = document.querySelector("label[originalname='"+Game.Memory.sceneName+"']");
+    if (s.getAttribute("originalname") != s.getAttribute("name")) {
+      fs.renameSync(
+        Game.projectsDir + "/" + Game.projectName + "/scenes/" + s.getAttribute("originalname") + ".json",
+        Game.projectsDir + "/" + Game.projectName + "/scenes/" + s.getAttribute("name") + ".json"
+      );
+      s.setAttribute("originalname", s.getAttribute("name"));
+      Game.Memory.sceneName = s.getAttribute("name");
+    }
+    fs.writeFileSync(Game.projectsDir + "/" + Game.projectName + "/scenes/" + Game.Memory.sceneName + ".json", JSON.stringify(Game.Memory.scene, null, 2));
     console.log(Game.Memory.sceneName + " saved");
   };
 
   static loadScene(sceneName, skipCheck = false) {
     if (skipCheck != true && sceneName == Game.Memory.sceneName) {
+      // Game.Memory.scene.displayProperties();
       return;
     }
     
     if (skipCheck != true && JSON.stringify(Game.getSceneData()) != JSON.stringify(Game.Memory.scene)) {
       let res = dialog.showMessageBoxSync(
-        BrowserWindow.getFocusedWindow(),
+        win,
         {
           "title": Game.Memory.sceneName + " has not been saved yet.",
           "message": "Do you want to save or disband changes to the scene?",
@@ -167,18 +201,26 @@ class Game {
         return;
       }
     }
+    // Game.resetPropertyList();
     Game.Memory.sceneName = sceneName;
     Game.Memory.scene = Game.getSceneData(sceneName);
-    let newActors = [];
-    // Parse Actor objects
-    for (let i = 0; i < Game.Memory.scene.actors.length; i++) {
-      const actor = Game.Memory.scene.actors[i];
-      newActors.push(new Actor(actor, false));
-    }
-    Game.Memory.scene.actors = newActors;
+    // Game.Memory.scene.displayProperties();
+
+    Game.resetPropertyList();
+
+    // Load the objects on the screen
+    Game.loadSceneObjects();
 
     Game.displayObjectLists();    
   };
+
+  static loadSceneObjects() {
+    const s = Game.Memory.scene;
+  }
+
+  static resetPropertyList() {
+    document.getElementById("propertiesList").innerHTML = "";
+  }
 
   /**
    * Get a scene's data.
@@ -186,7 +228,7 @@ class Game {
    * @returns {Game.formats["scene"]}
    */
   static getSceneData(sceneName = Game.Memory.sceneName) {
-    return JSON.parse(fs.readFileSync(Game.projectsDir + "/" + Game.projectName + "/scenes/" + sceneName + ".json", "utf8"));
+    return new Scene(JSON.parse(fs.readFileSync(Game.projectsDir + "/" + Game.projectName + "/scenes/" + sceneName + ".json", "utf8")));
   }
 
   /**
@@ -244,13 +286,38 @@ class Game {
       const lbl = document.createElement("label");
       lbl.innerText = scene;
       lbl.setAttribute("name", scene);
+      lbl.setAttribute("originalname", scene);
       if (i == 0) {
         firstSceneName = scene;
       }
 
       lbl.onclick = function() {
-        Game.loadScene(scene);
+        Game.loadScene(lbl.getAttribute("originalname"));
       };
+      lbl.oncontextmenu = function(e) {
+        Game.loadScene(lbl.getAttribute("originalname"));
+        new Menu.buildFromTemplate([
+          {
+            "label": "Scene: " + lbl.getAttribute("originalname"),
+            "enabled": false
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "label": "Properties",
+            /**
+             * 
+             * @param {Electron.MenuItem} menuItem
+             * @param {Electron.BrowserWindow} brwsWin
+             * @param {KeyboardEvent} e
+             */
+            "click": function() {
+              Game.getSceneData(lbl.getAttribute("originalname")).displayProperties();
+            }
+          }
+        ]).popup();
+      }
       scenesPanel.appendChild(lbl);
     }
     if (scenes.length == 0) {
@@ -265,6 +332,9 @@ class Game {
    * Format Definitions
    */
   static formats = {
+    /**
+     * @type {Scene}
+     */
     "scene": {
       "index": 0,
       /**
@@ -281,8 +351,43 @@ class Game {
   }
 }
 
+const menus = {
+  "file": new Menu.buildFromTemplate([
+    {
+      "label": "New Scene",
+      "click": function() {
+        Game.newScene();
+      }
+    }
+  ]),
+}
+
 // Things to do on start up.
 window.onload = function () {
+  /**
+   * @type {HTMLDivElement}
+   */
+  let canvas = document.querySelector("div#canvas");
+  canvas.style.width
+
+  document.getElementById("menu_File").addEventListener("click", function() {
+    menus.file.popup();
+  });
+  document.getElementById("menu_Edit").addEventListener("click", function() {
+    menus;
+  });
+  document.getElementById("menu_View").addEventListener("click", function() {
+    menus;
+  });
+  document.getElementById("menu_Insert").addEventListener("click", function() {
+    menus;
+  });
+  document.getElementById("menu_Run").addEventListener("click", function() {
+    menus;
+  });
+  document.getElementById("menu_Help").addEventListener("click", function() {
+    menus;
+  });
   Game.loadProjectScenes();
 };
 
@@ -305,14 +410,16 @@ class Alterable {
    */
   displayProperties() {
     /**
-     * @param {string} name Used as a Label.
-     * @param {string | number | boolean} value 
+     * @param {string} name Name of the value.
+     * @param {any} value Value
      * @param {(newValue) => void} onchange
+     * @param {Alterable} ref Reference required for objects.
      */
-    function makeProperty(name, value, onchange = function(){}) {
+    function makeProperty(name, value, onchange = function(){}, ref) {
+      const nameFormat = name.substring(0, 1).toUpperCase() + name.substring(1).replace(/[A-Z]/g," $&");
       const label = document.createElement("label");
       label.setAttribute("for", "propertyItem_" + name);
-      label.innerText = name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase();
+      label.innerText = nameFormat;
       const inp = document.createElement("input");
       inp.setAttribute("name", "propertyItem_" + name);
 
@@ -333,7 +440,14 @@ class Alterable {
         };
       }
       else if (typeof value == "object") {
-        return
+        inp.type = "button";
+        inp.value = "Manage Values";
+        inp.onclick = function() {
+          let _val = JSON.stringify(ref[name]);
+          localStorage.setItem("_tmpObjectString", _val);
+          onchange(_val);
+        };
+        // return;
       }
       else {
         inp.type = "text";
@@ -347,6 +461,8 @@ class Alterable {
       div.appendChild(label);
       div.appendChild(document.createElement("br"));
       div.appendChild(inp);
+      div.appendChild(document.createElement("br"));
+      div.appendChild(document.createElement("br"));
       div.className = "propertyElement";
 
       return div;
@@ -366,44 +482,164 @@ class Alterable {
 
     // Specific Properties
     if (this instanceof Actor) {
-      propertyList = {
-        "identity": this.identity,
-      };
       propertyList = this;
-    }
 
-    /**
-     * @type {Actor}
-     */
-    let actor = this;
-    /**
-     * @type {HTMLLabelElement}
-     */
-    let gameObject = null;
-    
-    const gameObjects = document.querySelectorAll("li.gameObject");
-    for (let i = 0; i < gameObjects.length; i++) {
-      const _gameObject = gameObjects[i];
-      if (_gameObject.innerText == actor.identity) {
-        gameObject = _gameObject;
-        break;
+      /**
+       * @type {Actor}
+       */
+      let actor = this;
+      /**
+       * @type {HTMLLabelElement}
+       */
+      let gameObject = null;
+      
+      const gameObjects = document.querySelectorAll("li.gameObject");
+      for (let i = 0; i < gameObjects.length; i++) {
+        const _gameObject = gameObjects[i];
+        if (_gameObject.innerText == actor.identity) {
+          gameObject = _gameObject;
+          break;
+        }
+      }
+      for (const key in propertyList) {      
+        if (!key.startsWith("_") && propertyList.hasOwnProperty(key)) {
+          const itemValue = propertyList[key];
+          let elm = makeProperty(key, itemValue, function(value) {
+            if (typeof itemValue == "object") {
+              let editObject = new BrowserWindow({
+                "parent": win,
+                "modal": true,
+                "minWidth": 640,
+                "minHeight": 480,
+                "maxWidth": 640,
+                "maxHeight": 480,
+                "minimizable": false,
+                "maximizable": false,
+                "autoHideMenuBar": true,
+                "webPreferences": {
+                  "nodeIntegration": true
+                }
+              }).on("closed", function() {
+                actor[key] = JSON.parse(localStorage.getItem("_tmpObjectString"));
+              });
+              editObject.loadFile("editObject.html");
+            }
+            else {
+              actor[key] = value;
+            }
+  
+  
+            if (key == "identity") {
+              gameObject.innerText = value;
+            }
+          }, actor);
+          
+          if (elm != null) panel.appendChild(elm);
+        }
       }
     }
-    for (const key in propertyList) {
-      if (propertyList.hasOwnProperty(key)) {
-        const itemValue = propertyList[key];
-        let elm = makeProperty(key, itemValue, function(value) {
-          actor[key] = value;
+    else if (this instanceof Scene) {
+      propertyList = {
+        "name": this.name,
+      };
+      /**
+       * @type {Scene}
+       */
+      let scene = Game.Memory.scene;
 
-          if (key == "identity") {
-            gameObject.innerText = value;
-          }
-        });
-        
-        if (elm != null) panel.appendChild(elm);
+      /**
+       * @type {HTMLLabelElement}
+       */
+      let sceneElement = null;
+      
+      const sceneElements = document.querySelectorAll("div#scenes label");
+      for (let i = 0; i < sceneElements.length; i++) {
+        const _sceneElement = sceneElements[i];
+        if (_sceneElement.getAttribute("name") == scene.name) {
+          sceneElement = _sceneElement;
+          break;
+        }
+      }
+
+      for (const key in propertyList) {      
+        if (!key.startsWith("_") && propertyList.hasOwnProperty(key)) {
+          const itemValue = propertyList[key];
+          let elm = makeProperty(key, itemValue, function(value) {
+            if (typeof itemValue == "object") {
+              let editObject = new BrowserWindow({
+                "parent": win,
+                "modal": true,
+                "minWidth": 640,
+                "minHeight": 480,
+                "maxWidth": 640,
+                "maxHeight": 480,
+                "minimizable": false,
+                "maximizable": false,
+                "autoHideMenuBar": true,
+                "webPreferences": {
+                  "nodeIntegration": true
+                }
+              }).on("closed", function() {
+                scene[key] = JSON.parse(localStorage.getItem("_tmpObjectString"));
+              });
+              editObject.loadFile("editObject.html");
+            }
+            else {
+              scene[key] = value;
+            }
+  
+            if (scene.name != sceneElement.getAttribute("name")) {
+              scene.name = sceneElement.getAttribute("name");
+            }
+  
+            if (key == "name") {
+              sceneElement.innerText = value;
+              sceneElement.setAttribute("name", value);
+              scene.name = value;
+              // Game.displayObjectLists();
+            }
+          }, scene);
+          
+          if (elm != null) panel.appendChild(elm);
+        }
       }
     }
   }
+}
+
+class Scene extends Alterable{
+  /**
+   * @param {Scene} data 
+   */
+  constructor(data) {
+    super();
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        const elm = data[key];
+        this[key] = elm;
+      }
+    }
+
+    // Parse Actor objects
+    let newActors = [];
+    for (let i = 0; i < this.actors.length; i++) {
+      const actor = this.actors[i];
+      newActors.push(new Actor(actor, false));
+    }
+    this.actors = newActors;
+  }
+  name = "";
+  index = 0;
+  /**
+   * Array of Actors.
+   * @type {Actor[]}
+   */
+  actors = [];
+  /**
+   * Full HTML code for this scene.
+   * @type {string}
+   */
+  html = "";
 }
 
 class Actor extends Alterable {
@@ -412,10 +648,13 @@ class Actor extends Alterable {
    * This must be unique in a single scene.
    */
   identity = "";
+  name = "";
   /**
    * Custom values that can be changed along the way.
    */
   customValues = {};
+
+  _arrayOfValues = [];
 
   active = false;
 
@@ -442,6 +681,34 @@ class Actor extends Alterable {
     }
     Game.Memory.scene.actors.push(this);
     Game.displayObjectLists();
+  }
+}
+
+/**
+ * More accurately checks which object this type is.
+ * @param {{} | []} obj 
+ * @returns { "bigint" | "boolean" | "function" | "number" | "object" | "array" | "string" | "symbol" | "undefined" }
+ */
+function typeOf(obj) {
+  if (typeof obj != "object") {
+    return typeof obj == "";
+  }
+  try {
+    let len = obj.length;
+    if (len === undefined) {
+      throw "notArray";
+    }
+    for (let i = 0; i < obj.length; i++) {
+      const item = obj[i];
+      console.log(item);
+      
+      if (item === undefined) {
+        throw "notArray";
+      }
+    }
+    return "array";
+  } catch (error) {
+    return "object";
   }
 }
 
