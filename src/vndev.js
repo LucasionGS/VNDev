@@ -41,7 +41,7 @@ class Game {
    * @param {string} projectName 
    * @param {Game.Memory["settings"]} settings 
    */
-  static initializeProject(projectName, settings = null) {
+  static initializeProject(projectName, settings = {}) {
     if (!fs.existsSync(Game.projectsDir)) {
       fs.mkdirSync(Game.projectsDir);
     }
@@ -81,7 +81,7 @@ class Game {
     // Create Files
     Game.newScene("Scene1");
     if (typeOf(settings) == "object")
-    fs.writeFileSync(Game.projectsDir + "/" + projectName + "/general", JSON.stringify(settings, null, 2));
+    fs.writeFileSync(Game.projectsDir + "/" + projectName + "/general/settings.json", JSON.stringify(settings, null, 2));
   }
 
   /**
@@ -159,6 +159,7 @@ class Game {
       li.onclick = function() {
         actor.displayProperties();
       }
+      hoverOverMenuJSON(li, actor);
       ul.appendChild(li);
     }
     scene.appendChild(ul);
@@ -294,6 +295,8 @@ class Game {
       lbl.onclick = function() {
         Game.loadScene(lbl.getAttribute("originalname"));
       };
+      
+
       lbl.oncontextmenu = function(e) {
         Game.loadScene(lbl.getAttribute("originalname"));
         new Menu.buildFromTemplate([
@@ -328,6 +331,30 @@ class Game {
     Game.loadScene(firstSceneName, true);
   }
 
+  static loadProjectSettings() {
+    let _settings = {};
+    try {
+      _settings = JSON.parse(fs.readFileSync(Game.projectsDir+"/"+Game.projectName+"/general/settings.json"));
+    } catch (error) {
+      console.error("Failed parsing ./general/settings.json file.");
+    }
+    
+    for (const key in _settings) {
+      if (_settings.hasOwnProperty(key)) {
+        const _set = _settings[key];
+        Game.Memory.settings[key] = _set;
+      }
+    }
+    
+    
+    /**
+     * @type {HTMLDivElement}
+     */
+    let canvas = document.getElementById("canvas");
+    canvas.style.width = Game.Memory.settings.width + "px";
+    canvas.style.height = Game.Memory.settings.height + "px";
+  }
+
   /**
    * Format Definitions
    */
@@ -360,34 +387,41 @@ const menus = {
       }
     }
   ]),
+  "new": new Menu.buildFromTemplate([
+    {
+      "label": "New Actor",
+      "click": function() {
+        new Actor("Actor");
+      }
+    }
+  ]),
 }
 
 // Things to do on start up.
 window.onload = function () {
-  /**
-   * @type {HTMLDivElement}
-   */
-  let canvas = document.querySelector("div#canvas");
-  canvas.style.width
-
   document.getElementById("menu_File").addEventListener("click", function() {
     menus.file.popup();
   });
-  document.getElementById("menu_Edit").addEventListener("click", function() {
-    menus;
+  document.getElementById("menu_New").addEventListener("click", function() {
+    menus.new.popup();
   });
-  document.getElementById("menu_View").addEventListener("click", function() {
-    menus;
-  });
-  document.getElementById("menu_Insert").addEventListener("click", function() {
-    menus;
-  });
-  document.getElementById("menu_Run").addEventListener("click", function() {
-    menus;
-  });
-  document.getElementById("menu_Help").addEventListener("click", function() {
-    menus;
-  });
+  // document.getElementById("menu_Edit").addEventListener("click", function() {
+  //   menus;
+  // });
+  // document.getElementById("menu_View").addEventListener("click", function() {
+  //   menus;
+  // });
+  // document.getElementById("menu_Insert").addEventListener("click", function() {
+  //   menus;
+  // });
+  // document.getElementById("menu_Run").addEventListener("click", function() {
+  //   menus;
+  // });
+  // document.getElementById("menu_Help").addEventListener("click", function() {
+  //   menus;
+  // });
+
+  Game.loadProjectSettings();
   Game.loadProjectScenes();
 };
 
@@ -447,6 +481,8 @@ class Alterable {
           localStorage.setItem("_tmpObjectString", _val);
           onchange(_val);
         };
+
+        hoverOverMenuJSON(inp, ref[name]);
         // return;
       }
       else {
@@ -501,7 +537,7 @@ class Alterable {
           break;
         }
       }
-      for (const key in propertyList) {      
+      for (const key in propertyList) {
         if (!key.startsWith("_") && propertyList.hasOwnProperty(key)) {
           const itemValue = propertyList[key];
           let elm = makeProperty(key, itemValue, function(value) {
@@ -509,10 +545,13 @@ class Alterable {
               let editObject = new BrowserWindow({
                 "parent": win,
                 "modal": true,
+                "title": "Edit Object: "+ actor.identity+"."+key,
                 "minWidth": 640,
                 "minHeight": 480,
                 "maxWidth": 640,
                 "maxHeight": 480,
+                "width": 640,
+                "height": 480,
                 "minimizable": false,
                 "maximizable": false,
                 "autoHideMenuBar": true,
@@ -561,7 +600,7 @@ class Alterable {
         }
       }
 
-      for (const key in propertyList) {      
+      for (const key in propertyList) {
         if (!key.startsWith("_") && propertyList.hasOwnProperty(key)) {
           const itemValue = propertyList[key];
           let elm = makeProperty(key, itemValue, function(value) {
@@ -569,10 +608,13 @@ class Alterable {
               let editObject = new BrowserWindow({
                 "parent": win,
                 "modal": true,
+                "title": "Edit Object: "+ scene.name+"."+key,
                 "minWidth": 640,
                 "minHeight": 480,
                 "maxWidth": 640,
                 "maxHeight": 480,
+                "width": 640,
+                "height": 480,
                 "minimizable": false,
                 "maximizable": false,
                 "autoHideMenuBar": true,
@@ -639,7 +681,7 @@ class Scene extends Alterable{
    * Full HTML code for this scene.
    * @type {string}
    */
-  html = "";
+  // html = "";
 }
 
 class Actor extends Alterable {
@@ -654,9 +696,7 @@ class Actor extends Alterable {
    */
   customValues = {};
 
-  _arrayOfValues = [];
-
-  active = false;
+  
 
   /**
    * Create a new Actor.
@@ -664,10 +704,15 @@ class Actor extends Alterable {
    */
   constructor(data, attach = true) {
     super();
-    for (const key in data) {
-      if (data.hasOwnProperty(key)) {
-        const elm = data[key];
-        this[key] = elm;
+    if (typeof data == "string") {
+      this.identity = data;
+    }
+    else if (typeOf(data) == "object") {
+      for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+          const elm = data[key];
+          this[key] = elm;
+        }
       }
     }
     if (attach == true) {
@@ -679,39 +724,24 @@ class Actor extends Alterable {
     if (typeof Game.Memory.scene.actors == "undefined") {
       Game.Memory.scene.actors = [];
     }
+    let origId = this.identity
+    let altId = 0;
+    while (this.identityExists())
+    {
+      altId++;
+      this.identity = origId + "-" + altId;
+    }
     Game.Memory.scene.actors.push(this);
     Game.displayObjectLists();
   }
-}
 
-/**
- * More accurately checks which object this type is.
- * @param {{} | []} obj 
- * @returns { "bigint" | "boolean" | "function" | "number" | "object" | "array" | "string" | "symbol" | "undefined" }
- */
-function typeOf(obj) {
-  if (typeof obj != "object") {
-    return typeof obj == "";
-  }
-  try {
-    let len = obj.length;
-    if (len === undefined) {
-      throw "notArray";
-    }
-    for (let i = 0; i < obj.length; i++) {
-      const item = obj[i];
-      console.log(item);
-      
-      if (item === undefined) {
-        throw "notArray";
+  identityExists() {
+    for (let i = 0; i < Game.Memory.scene.actors.length; i++) {
+      const _actor = Game.Memory.scene.actors[i];
+      if (_actor.identity == this.identity) {
+        return true;
       }
     }
-    return "array";
-  } catch (error) {
-    return "object";
+    return false;
   }
 }
-
-let actor = new Actor({
-  "identity": "Len"
-});

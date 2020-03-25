@@ -103,7 +103,17 @@ div#sidebar div#properties{
 }
 
 /* Workspace */
+div#workspace {
+  position: absolute;
+  width: calc(100% - 256px);
+  left: 256px;
+  top: 2rem;
+  height: calc(100% - 2rem);
+  overflow: auto;
+}
+
 div#workspace div#canvas {
+  position: absolute;
   background-color: whitesmoke;
 }
 
