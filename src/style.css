@@ -109,11 +109,16 @@ div#workspace {
   left: 256px;
   top: 2rem;
   height: calc(100% - 2rem);
-  overflow: auto;
+  overflow: scroll;
 }
 
-div#workspace div#canvas {
+div#workspace canvas#gameCanvas {
   position: absolute;
+  /* transform-origin: 50% 50%; */
+  /* left: 4%;
+  top: 4%; */
+  margin: 4%;
+  /* transform: translate(-50%, -50%); */
   background-color: whitesmoke;
 }
 

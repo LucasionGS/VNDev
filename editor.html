@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="./src/style.css">
+  <script src="./src/GameEngine.js"></script>
   <script src="./src/tools.js"></script>
-  <script src="./src/vndev.js"></script>
+  <script async src="./src/vndev.js"></script>
   <title>Document</title>
 </head>
 <header>
@@ -26,17 +27,6 @@
     <div id="project">
       <h3 class="panelTitle">Project - Scenes</h3>
       <div id="scenes">
-        <label onclick="confirm('yes?')">Menu</label>
-        <label>Beginning</label>
-        <label>Intro</label>
-        <label>Scene1
-          <ul id="objectList">
-            <li class="gameObject">Len</li>
-            <li class="gameObject">Shinonome</li>
-            <li class="gameObject">Uzume</li>
-            <li class="gameObject">Ruka</li>
-          </ul>
-        </label>
       </div>
     </div>
     <div id="properties">
@@ -45,9 +35,9 @@
     </div>
   </div>
   <div id="workspace">
-    <div id="canvas">
+    <canvas id="gameCanvas">
 
-    </div>
+    </canvas>
   </div>
 </body>
 </html>

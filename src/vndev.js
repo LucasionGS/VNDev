@@ -17,7 +17,7 @@ const win = Electron.remote.getCurrentWindow();
 /**
  * Core of the editor.
  */
-class Game {
+class VNGame {
   /**
    * Project folders are stored here.
    * @type {string}
@@ -39,15 +39,15 @@ class Game {
 
   /**
    * @param {string} projectName 
-   * @param {Game.Memory["settings"]} settings 
+   * @param {VNGame.Memory["settings"]} settings 
    */
   static initializeProject(projectName, settings = {}) {
-    if (!fs.existsSync(Game.projectsDir)) {
-      fs.mkdirSync(Game.projectsDir);
+    if (!fs.existsSync(VNGame.projectsDir)) {
+      fs.mkdirSync(VNGame.projectsDir);
     }
 
-    if (!fs.existsSync(Game.projectsDir + "/" + projectName)) {
-      fs.mkdirSync(Game.projectsDir + "/" + projectName);
+    if (!fs.existsSync(VNGame.projectsDir + "/" + projectName)) {
+      fs.mkdirSync(VNGame.projectsDir + "/" + projectName);
     }
     else {
       if (
@@ -60,28 +60,28 @@ class Game {
               "noLink": true
             }) === 0
           ) {
-        fs.rmdirSync(Game.projectsDir + "/" + projectName, {
+        fs.rmdirSync(VNGame.projectsDir + "/" + projectName, {
           recursive: true
         });
-        fs.mkdirSync(Game.projectsDir + "/" + projectName);
+        fs.mkdirSync(VNGame.projectsDir + "/" + projectName);
       }
       else {
         return;
       }
     }
 
-    Game.projectName = projectName;
+    VNGame.projectName = projectName;
 
     // Create folders
-    fs.mkdirSync(Game.projectsDir + "/" + projectName + "/audio");
-    fs.mkdirSync(Game.projectsDir + "/" + projectName + "/general");
-    fs.mkdirSync(Game.projectsDir + "/" + projectName + "/sprites");
-    fs.mkdirSync(Game.projectsDir + "/" + projectName + "/scenes");
+    fs.mkdirSync(VNGame.projectsDir + "/" + projectName + "/audio");
+    fs.mkdirSync(VNGame.projectsDir + "/" + projectName + "/general");
+    fs.mkdirSync(VNGame.projectsDir + "/" + projectName + "/sprites");
+    fs.mkdirSync(VNGame.projectsDir + "/" + projectName + "/scenes");
 
     // Create Files
-    Game.newScene("Scene1");
+    VNGame.newScene("Scene1");
     if (typeOf(settings) == "object")
-    fs.writeFileSync(Game.projectsDir + "/" + projectName + "/general/settings.json", JSON.stringify(settings, null, 2));
+    fs.writeFileSync(VNGame.projectsDir + "/" + projectName + "/general/settings.json", JSON.stringify(settings, null, 2));
   }
 
   /**
@@ -90,10 +90,10 @@ class Game {
    */
   static newScene(sceneName = "Scene") {
     // Create files
-    let otherScenes = Game.getScenes();
+    let otherScenes = VNGame.getScenes();
     let sceneAlt = 0;
     let finalSceneName = sceneName;
-    while (fs.existsSync(Game.projectsDir + "/" + Game.projectName + `/scenes/${finalSceneName}.json`)) {
+    while (fs.existsSync(VNGame.projectsDir + "/" + VNGame.projectName + `/scenes/${finalSceneName}.json`)) {
       sceneAlt++;
       finalSceneName = sceneName + sceneAlt;
     }
@@ -101,8 +101,8 @@ class Game {
     let data = new Scene({"name": finalSceneName});
 
     data.index = otherScenes.length;
-    fs.writeFileSync(Game.projectsDir + "/" + Game.projectName + `/scenes/${finalSceneName}.json`, JSON.stringify(data, null, 2));
-    Game.loadProjectScenes();
+    fs.writeFileSync(VNGame.projectsDir + "/" + VNGame.projectName + `/scenes/${finalSceneName}.json`, JSON.stringify(data, null, 2));
+    VNGame.loadProjectScenes();
   }
 
   /**
@@ -110,12 +110,12 @@ class Game {
    * @type {string}
    */
   static get sceneName() {
-    return Game.Memory.sceneName;
+    return VNGame.Memory.sceneName;
   }
 
   static set sceneName(value) {
-    Game.Memory.sceneName = value;
-    Game.displayObjectLists();
+    VNGame.Memory.sceneName = value;
+    VNGame.displayObjectLists();
   }
 
   static Memory = {
@@ -123,7 +123,7 @@ class Game {
 
     /**
      * Current scene's data.
-     * @type {Game.formats["scene"]}
+     * @type {VNGame.formats["scene"]}
      */
     "scene": {
       "index": 0,
@@ -141,7 +141,7 @@ class Game {
    * Refreshes the objects list under the current scene.
    */
   static displayObjectLists() {
-    let scene = document.querySelector("div#scenes label[name='" + Game.Memory.sceneName + "']");
+    let scene = document.querySelector("div#scenes label[name='" + VNGame.Memory.sceneName + "']");
     if (scene == null) return;
 
     let allScenes = document.querySelectorAll("div#scenes label");
@@ -151,8 +151,8 @@ class Game {
     }
     const ul = document.createElement("ul");
     ul.id = "objectList";
-    for (let i = 0; i < Game.Memory.scene.actors.length; i++) {
-      const actor = Game.Memory.scene.actors[i];
+    for (let i = 0; i < VNGame.Memory.scene.actors.length; i++) {
+      const actor = VNGame.Memory.scene.actors[i];
       const li = document.createElement("li");
       li.innerText = actor.identity;
       li.className = "gameObject";
@@ -167,56 +167,58 @@ class Game {
   }
 
   static saveScene() {
-    const s = document.querySelector("label[originalname='"+Game.Memory.sceneName+"']");
+    const s = document.querySelector("label[originalname='"+VNGame.Memory.sceneName+"']");
     if (s.getAttribute("originalname") != s.getAttribute("name")) {
       fs.renameSync(
-        Game.projectsDir + "/" + Game.projectName + "/scenes/" + s.getAttribute("originalname") + ".json",
-        Game.projectsDir + "/" + Game.projectName + "/scenes/" + s.getAttribute("name") + ".json"
+        VNGame.projectsDir + "/" + VNGame.projectName + "/scenes/" + s.getAttribute("originalname") + ".json",
+        VNGame.projectsDir + "/" + VNGame.projectName + "/scenes/" + s.getAttribute("name") + ".json"
       );
       s.setAttribute("originalname", s.getAttribute("name"));
-      Game.Memory.sceneName = s.getAttribute("name");
+      VNGame.Memory.sceneName = s.getAttribute("name");
     }
-    fs.writeFileSync(Game.projectsDir + "/" + Game.projectName + "/scenes/" + Game.Memory.sceneName + ".json", JSON.stringify(Game.Memory.scene, null, 2));
-    console.log(Game.Memory.sceneName + " saved");
+    fs.writeFileSync(VNGame.projectsDir + "/" + VNGame.projectName + "/scenes/" + VNGame.Memory.sceneName + ".json", JSON.stringify(VNGame.Memory.scene, null, 2));
+    console.log(VNGame.Memory.sceneName + " saved");
+
+    VNGame.updateDrawables();
   };
 
   static loadScene(sceneName, skipCheck = false) {
-    if (skipCheck != true && sceneName == Game.Memory.sceneName) {
-      // Game.Memory.scene.displayProperties();
+    if (skipCheck != true && sceneName == VNGame.Memory.sceneName) {
+      // VNGame.Memory.scene.displayProperties();
       return;
     }
     
-    if (skipCheck != true && JSON.stringify(Game.getSceneData()) != JSON.stringify(Game.Memory.scene)) {
+    if (skipCheck != true && JSON.stringify(VNGame.getSceneData()) != JSON.stringify(VNGame.Memory.scene)) {
       let res = dialog.showMessageBoxSync(
         win,
         {
-          "title": Game.Memory.sceneName + " has not been saved yet.",
+          "title": VNGame.Memory.sceneName + " has not been saved yet.",
           "message": "Do you want to save or disband changes to the scene?",
           "buttons": ["Save and continue", "Disband changes to scene", "Cancel"],
           "noLink": true
         });
       if (res == 0) {
-        Game.saveScene();
+        VNGame.saveScene();
       }
       if (res == 2) {
         return;
       }
     }
-    // Game.resetPropertyList();
-    Game.Memory.sceneName = sceneName;
-    Game.Memory.scene = Game.getSceneData(sceneName);
-    // Game.Memory.scene.displayProperties();
+    // VNGame.resetPropertyList();
+    VNGame.Memory.sceneName = sceneName;
+    VNGame.Memory.scene = VNGame.getSceneData(sceneName);
+    // VNGame.Memory.scene.displayProperties();
 
-    Game.resetPropertyList();
+    VNGame.resetPropertyList();
 
     // Load the objects on the screen
-    Game.loadSceneObjects();
+    VNGame.loadSceneObjects();
 
-    Game.displayObjectLists();    
+    VNGame.displayObjectLists();    
   };
 
   static loadSceneObjects() {
-    const s = Game.Memory.scene;
+    const s = VNGame.Memory.scene;
   }
 
   static resetPropertyList() {
@@ -226,25 +228,25 @@ class Game {
   /**
    * Get a scene's data.
    * @param {string} sceneName A specific scene name to get data from. Leave blank for current scene.
-   * @returns {Game.formats["scene"]}
+   * @returns {VNGame.formats["scene"]}
    */
-  static getSceneData(sceneName = Game.Memory.sceneName) {
-    return new Scene(JSON.parse(fs.readFileSync(Game.projectsDir + "/" + Game.projectName + "/scenes/" + sceneName + ".json", "utf8")));
+  static getSceneData(sceneName = VNGame.Memory.sceneName) {
+    return new Scene(JSON.parse(fs.readFileSync(VNGame.projectsDir + "/" + VNGame.projectName + "/scenes/" + sceneName + ".json", "utf8")));
   }
 
   /**
    * @param {boolean} withExt Set to `true` if you want to have the name and `.json` extension.
    */
   static getScenes(withExt = false) {
-    let scenes = fs.readdirSync(Game.projectsDir + "/" + Game.projectName + "/scenes");
+    let scenes = fs.readdirSync(VNGame.projectsDir + "/" + VNGame.projectName + "/scenes");
 
     /**
-     * @type {Game.Memory["scene"][]}
+     * @type {VNGame.Memory["scene"][]}
      */
     let sorted = [];
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
-      const scenePath = Game.projectsDir + "/" + Game.projectName + "/scenes/" + scene;
+      const scenePath = VNGame.projectsDir + "/" + VNGame.projectName + "/scenes/" + scene;
       let sceneData;
       try {
         sceneData = JSON.parse(fs.readFileSync(scenePath, "utf8"));
@@ -279,7 +281,7 @@ class Game {
     // Load the stored project name and it's scenes.
     let scenesPanel = document.getElementById("scenes");
     scenesPanel.innerHTML = "";
-    let scenes = Game.getScenes();
+    let scenes = VNGame.getScenes();
     let firstSceneName = "";
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
@@ -293,12 +295,12 @@ class Game {
       }
 
       lbl.onclick = function() {
-        Game.loadScene(lbl.getAttribute("originalname"));
+        VNGame.loadScene(lbl.getAttribute("originalname"));
       };
       
 
       lbl.oncontextmenu = function(e) {
-        Game.loadScene(lbl.getAttribute("originalname"));
+        VNGame.loadScene(lbl.getAttribute("originalname"));
         new Menu.buildFromTemplate([
           {
             "label": "Scene: " + lbl.getAttribute("originalname"),
@@ -316,7 +318,7 @@ class Game {
              * @param {KeyboardEvent} e
              */
             "click": function() {
-              Game.getSceneData(lbl.getAttribute("originalname")).displayProperties();
+              VNGame.getSceneData(lbl.getAttribute("originalname")).displayProperties();
             }
           }
         ]).popup();
@@ -324,17 +326,17 @@ class Game {
       scenesPanel.appendChild(lbl);
     }
     if (scenes.length == 0) {
-      Game.newScene("Scene1");
+      VNGame.newScene("Scene1");
       firstSceneName = "Scene1";
     }
 
-    Game.loadScene(firstSceneName, true);
+    VNGame.loadScene(firstSceneName, true);
   }
 
   static loadProjectSettings() {
-    let _settings = {};
+    let _settings = { };
     try {
-      _settings = JSON.parse(fs.readFileSync(Game.projectsDir+"/"+Game.projectName+"/general/settings.json"));
+      _settings = JSON.parse(fs.readFileSync(VNGame.projectsDir+"/"+VNGame.projectName+"/general/settings.json"));
     } catch (error) {
       console.error("Failed parsing ./general/settings.json file.");
     }
@@ -342,17 +344,29 @@ class Game {
     for (const key in _settings) {
       if (_settings.hasOwnProperty(key)) {
         const _set = _settings[key];
-        Game.Memory.settings[key] = _set;
+        VNGame.Memory.settings[key] = _set;
       }
     }
-    
-    
-    /**
-     * @type {HTMLDivElement}
-     */
-    let canvas = document.getElementById("canvas");
-    canvas.style.width = Game.Memory.settings.width + "px";
-    canvas.style.height = Game.Memory.settings.height + "px";
+  }
+
+  static game = (function() {
+    let game = new Game(VNGame.Memory.settings.width, VNGame.Memory.settings.height);
+    game.canvas = document.getElementById("gameCanvas");
+    return game;
+  })();
+
+  static updateDrawables() {
+    let arr = [];
+    VNGame.Memory.scene.actors.forEach((a) => {
+      let go = VNGame.game.newObject(a.x, a.y);
+      go.setImage(VNGame.projectsDir+"/"+VNGame.projectName+"/sprites/"+a.images[0]);
+      setTimeout(() => {
+        go.width = go.image.width;
+        go.height = go.image.height;
+      }, 1);
+      arr.push(go);
+    });
+    VNGame.game.drawableObjects = arr;
   }
 
   /**
@@ -383,7 +397,7 @@ const menus = {
     {
       "label": "New Scene",
       "click": function() {
-        Game.newScene();
+        VNGame.newScene();
       }
     }
   ]),
@@ -405,6 +419,7 @@ window.onload = function () {
   document.getElementById("menu_New").addEventListener("click", function() {
     menus.new.popup();
   });
+
   // document.getElementById("menu_Edit").addEventListener("click", function() {
   //   menus;
   // });
@@ -421,15 +436,30 @@ window.onload = function () {
   //   menus;
   // });
 
-  Game.loadProjectSettings();
-  Game.loadProjectScenes();
+  InputHandler.recordKeyStates();
+
+  document.addEventListener("wheel", function(e) {
+    if (e.ctrlKey && e.deltaY > 0 && VNGame.game.scale > 20) {
+      VNGame.game.scale -= 10;
+    }
+    if (e.ctrlKey && e.deltaY < 0 && VNGame.game.scale < 200) {
+      VNGame.game.scale += 10;
+    }    
+  });
+
+  VNGame.loadProjectSettings();
+  VNGame.loadProjectScenes();
+
+  // Start drawing objects
+  VNGame.updateDrawables();
+  VNGame.game.start();
 };
 
 // Shortcuts and keypresses
 window.addEventListener("keydown", function(e) {
   let key = e.key.toLowerCase();
   if (key == "s" && e.ctrlKey) {
-    Game.saveScene();
+    VNGame.saveScene();
   }
 });
 
@@ -560,17 +590,28 @@ class Alterable {
                 }
               }).on("closed", function() {
                 actor[key] = JSON.parse(localStorage.getItem("_tmpObjectString"));
+                VNGame.displayObjectLists();
+                actor.displayProperties();
+                
+                VNGame.updateDrawables();
               });
               editObject.loadFile("editObject.html");
             }
             else {
-              actor[key] = value;
+              // if (!isNaN(value)) {
+              if (key == "x" || key == "y") {
+                actor[key] = +value;
+              }
+              else {
+                actor[key] = value;
+              };
             }
-  
   
             if (key == "identity") {
               gameObject.innerText = value;
             }
+
+            VNGame.updateDrawables();
           }, actor);
           
           if (elm != null) panel.appendChild(elm);
@@ -584,7 +625,7 @@ class Alterable {
       /**
        * @type {Scene}
        */
-      let scene = Game.Memory.scene;
+      let scene = VNGame.Memory.scene;
 
       /**
        * @type {HTMLLabelElement}
@@ -638,7 +679,7 @@ class Alterable {
               sceneElement.innerText = value;
               sceneElement.setAttribute("name", value);
               scene.name = value;
-              // Game.displayObjectLists();
+              // VNGame.displayObjectLists();
             }
           }, scene);
           
@@ -646,6 +687,8 @@ class Alterable {
         }
       }
     }
+
+    closeAllHoverMenus();
   }
 }
 
@@ -696,7 +739,14 @@ class Actor extends Alterable {
    */
   customValues = {};
 
-  
+  /**
+   * URI to stored images.
+   * @type {string[]}
+   */
+  images = [];
+
+  x = 0;
+  y = 0;
 
   /**
    * Create a new Actor.
@@ -709,35 +759,36 @@ class Actor extends Alterable {
     }
     else if (typeOf(data) == "object") {
       for (const key in data) {
-        if (data.hasOwnProperty(key)) {
+        if (!key.startsWith("_") && data.hasOwnProperty(key)) {
           const elm = data[key];
           this[key] = elm;
         }
       }
     }
+
     if (attach == true) {
       this.attachToScene();   
     }
   }
 
   attachToScene() {
-    if (typeof Game.Memory.scene.actors == "undefined") {
-      Game.Memory.scene.actors = [];
+    if (typeof VNGame.Memory.scene.actors == "undefined") {
+      VNGame.Memory.scene.actors = [];
     }
-    let origId = this.identity
+    let origId = this.identity;
     let altId = 0;
     while (this.identityExists())
     {
       altId++;
       this.identity = origId + "-" + altId;
     }
-    Game.Memory.scene.actors.push(this);
-    Game.displayObjectLists();
+    VNGame.Memory.scene.actors.push(this);
+    VNGame.displayObjectLists();
   }
 
   identityExists() {
-    for (let i = 0; i < Game.Memory.scene.actors.length; i++) {
-      const _actor = Game.Memory.scene.actors[i];
+    for (let i = 0; i < VNGame.Memory.scene.actors.length; i++) {
+      const _actor = VNGame.Memory.scene.actors[i];
       if (_actor.identity == this.identity) {
         return true;
       }

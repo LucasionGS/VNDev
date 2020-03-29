@@ -1,5 +1,10 @@
 const Electron = require("electron");
 let obj = JSON.parse(localStorage.getItem("_tmpObjectString"));
+let isArray = (Array.isArray(obj));
+if (isArray) {
+  console.log("This is array!");
+  
+}
 window.onload = function() {
   for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
@@ -22,6 +27,9 @@ function getValues() {
 }
 
 function addValue(key = "", value = "", focus = false) {
+  if (isArray === true) {
+    key = +key;
+  }
   const div = document.createElement("div");
   const remove = document.createElement("button");
   const name = document.createElement("input");
@@ -30,6 +38,7 @@ function addValue(key = "", value = "", focus = false) {
 
   remove.innerText = "X";
   remove.style.color = "red";
+  remove.tabIndex = -1;
   remove.onclick = function() {
     let res = Electron.remote.dialog.showMessageBoxSync(Electron.remote.getCurrentWindow(), {
       "title": "Confirmation",
@@ -47,6 +56,10 @@ function addValue(key = "", value = "", focus = false) {
   name.className = "keyInp";
   name.placeholder = "key";
   name.value = key;
+
+  if (isArray === true) {
+    name.type = "hidden";
+  }
 
   name.addEventListener("input", function(e) {
     name.style.color = "";
@@ -71,6 +84,7 @@ function addValue(key = "", value = "", focus = false) {
   type.innerText = "Type";
   type.className = "typeInp";
   type.disabled = true;
+  type.tabIndex = -1;
 
   /**
    * @param {HTMLInputElement} inp
@@ -106,11 +120,13 @@ function addValue(key = "", value = "", focus = false) {
 
   div.appendChild(remove);
   div.appendChild(name);
-  div.appendChild((function() {
-    let s = document.createElement("span");
-    s.innerText = ": ";
-    return s;
-  })());
+  if (isArray !== true) {
+    div.appendChild((function() {
+      let s = document.createElement("span");
+      s.innerText = ": ";
+      return s;
+    })());
+  }
   div.appendChild(inp);
   div.appendChild(type);
   div.appendChild(document.createElement("br"));
@@ -148,8 +164,6 @@ function colorInput(inp, type, onDone = function(){}) {
   }
 
   onDone(inp, type, types);
-
-  // type.innerText = types.join(" | ");
   return inp;
 }
 
@@ -159,23 +173,33 @@ function exit(index) {
     let values = document.getElementsByClassName("valueInp");
     let objString = (function() {
       let newObj = {};
+      if (isArray === true) {
+        newObj = [];
+      }
       for (let i = 0; i < names.length; i++) {
         
-        const name = names[i].value;
+        let name = names[i].value;
+        if (isArray === true) {
+          name = i;
+        }
         let value = values[i].value;
-        if (value == "true") {
+        console.log(name + " - " + value);
+        
+        if (value === "true") {
           value = true;
         }
-        else if (value == "false") {
+        else if (value === "false") {
           value = false;
         }
-        else if (value == "null") {
+        else if (value === "null") {
           value = null;
         }
         else if (!isNaN(value)) {
           value = +value;
         }
-        if (name == "") {
+        console.log(name + " - " + value);
+
+        if (name === "") {
           Electron.remote.dialog.showErrorBox(
             "Missing key name",
             "A value is missing a key name."
@@ -200,7 +224,6 @@ function exit(index) {
           return false;
         }
       }
-
       return JSON.stringify(newObj);
     })();
 

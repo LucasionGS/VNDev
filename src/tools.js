@@ -315,6 +315,8 @@ function hoverOverMenu(object, text, HTMLSupport) {
   div.style.opacity = "0.9";
   div.style.fontWeight = "bold";
 
+  div.className = "__hoverOverMenuPopUp";
+
   if (typeof text == "function") {
     text = text(div);
   }
@@ -335,10 +337,11 @@ function hoverOverMenu(object, text, HTMLSupport) {
   });
 
   object.addEventListener("mouseleave", function(e) {
-    div.parentElement.removeChild(div);
+    try {
+      div.parentElement.removeChild(div);
+    } catch { }
   });
 }
-
 
 /**
  * @param {HTMLElement} object
@@ -359,6 +362,13 @@ function hoverOverMenuJSON(object, json) {
 
     return syntaxHighlight(JSON.stringify(json, null, 2));
   }, true);
+}
+
+function closeAllHoverMenus() {
+  let a = document.querySelectorAll(".__hoverOverMenuPopUp");
+  for (let i = 0; i < a.length; i++) {
+    a[i].parentElement.removeChild(a[i]);
+  }
 }
 
 /**
