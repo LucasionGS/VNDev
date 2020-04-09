@@ -1,0 +1,72 @@
+{
+  "sceneName": "A scene name",
+  "actors": [
+    {
+      "identifier": "n word",
+      "_transformable": {
+        "x": 32,
+        "y": 32,
+        "w": 32,
+        "h": 32,
+        "r": 0,
+        "s": 1,
+        "parent": null
+      },
+      "children": [
+        {
+          "identifier": "A child element",
+          "_transformable": {
+            "x": 32,
+            "y": 32,
+            "w": 32,
+            "h": 32,
+            "r": 0,
+            "s": 1,
+            "parent": "n word"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "identifier": "another one",
+      "_transformable": {
+        "x": 32,
+        "y": 128,
+        "w": 32,
+        "h": 32,
+        "r": 0,
+        "s": 1,
+        "parent": null
+      },
+      "children": [
+        {
+          "identifier": "A child element no. 2",
+          "_transformable": {
+            "x": 32,
+            "y": 32,
+            "w": 32,
+            "h": 32,
+            "r": 0,
+            "s": 1,
+            "parent": "another one"
+          },
+          "children": []
+        },
+        {
+          "identifier": "What a moment",
+          "_transformable": {
+            "x": 32,
+            "y": 32,
+            "w": 32,
+            "h": 32,
+            "r": 0,
+            "s": 1,
+            "parent": "another one"
+          },
+          "children": []
+        }
+      ]
+    }
+  ]
+}
