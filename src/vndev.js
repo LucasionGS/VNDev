@@ -45,7 +45,6 @@ class Scene {
   getActor(identifier, actorArray = this.actors) {
     for (let i = 0; i < actorArray.length; i++) {
       const actor = actorArray[i];
-      // console.log(identifier + " == " + actor.identifier);
       
       if (actor.identifier == identifier) {
         return actor;
