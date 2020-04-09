@@ -37,13 +37,22 @@ class Scene {
   }
 
   /**
-   * @param {string} identifier 
+   * @param {string} identifier
+   * @param {Actor[]} actorArray Defaults to this.actors
+   * 
+   * @returns {Actor}
    */
-  getActor(identifier) {
-    for (let i = 0; i < this.actors.length; i++) {
-      const actor = this.actors[i];
+  getActor(identifier, actorArray = this.actors) {
+    for (let i = 0; i < actorArray.length; i++) {
+      const actor = actorArray[i];
+      // console.log(identifier + " == " + actor.identifier);
+      
       if (actor.identifier == identifier) {
         return actor;
+      }
+      let res = this.getActor(identifier, actor.children);
+      if (res != null) {
+        return res;
       }
     }
     return null;
@@ -80,34 +89,44 @@ class Scene {
   actors = [];
 }
 
+function saveObject(actor) {
+  fs.writeFileSync("./actor.json", JSON.stringify(actor, null, 2));
+}
+
 class Actor {
   /**
    * @param {Actor} args 
    */
   constructor(args) {
-    let { _transformable, width, height, x, y, identifier, rotation, scale } = args;
+    let { _transformable, children, width, height, x, y, identifier, rotation, scale } = args;
     if(identifier !== undefined) this.identifier = identifier;
-    // if (parent !== undefined && !parent instanceof Actor) parent = new Actor(parent);
-    // this.parent = parent;
 
     if (_transformable === undefined) {
       _transformable = { };
     }
 
-    if (Array.isArray(_transformable.children)) {
-      for (let i = 0; i < _transformable.children.length; i++) {
-        _transformable.children[i] = new Actor( _transformable.children[i]);
+    if (Array.isArray(children)) {
+      for (let i = 0; i < children.length; i++) {
+        children[i] = new Actor(children[i]);
+        children[i].parent = this.identifier;
       }
     }
-
-    
+    else {
+      children = [];
+    }
+    this.children = children;
     if (x !== undefined) this.x = x;
     if (y !== undefined) this.y = y;
     if (width !== undefined) this.width = width;
     if (height !== undefined) this.height = height;
     if (scale !== undefined) this.scale = scale;
     if (rotation !== undefined) this.rotation = rotation;
-    this._transformable = _transformable
+    for (const key in _transformable) {
+      if (_transformable.hasOwnProperty(key)) {
+        const value = _transformable[key];
+        this._transformable[key] = _transformable[key];
+      }
+    }
   }
 
   /**
@@ -115,50 +134,53 @@ class Actor {
    */
   identifier = null;
 
+  setIdentifier(newIdentifier) {
+    this.identifier = newIdentifier;
+    for (let i = 0; i < this.children.length; i++) {
+      const child = this.children[i];
+      child.parent = newIdentifier;
+    }
+  }
+
   /**
    * Never read/write to this directly except for in getters and setters internally.
    */
   _transformable = {
     /**
-     * X Position
+     * X Position <Int>
      * @type {number}
      */
     x: 0,
     /**
-     * Y Position
+     * Y Position <Int>
      * @type {number}
      */
     y: 0,
     /**
-     * Width
+     * Width <Int>
      * @type {number}
      */
     w: 0,
     /**
-     * Height
+     * Height <Int>
      * @type {number}
      */
     h: 0,
     /**
-     * Rotation
+     * Rotation <Int>
      * @type {number}
      */
     r: 0,
     /**
-     * Scale
+     * Scale <Float>
      * @type {number}
      */
     s: 1,
     /**
-     * Parent Object
-     * @type {Actor}
+     * Parent Object's identifier <String>
+     * @type {string}
      */
     parent: null,
-    /**
-     * Child Objects
-     * @type {Actor[]}
-     */
-    children: [],
   }
 
   // X Position
@@ -209,30 +231,45 @@ class Actor {
 
   // Parent element
   set parent(value) {
-    this._transformable.parent = value;
+    if (value instanceof Actor) {
+      this._transformable.parent = value.identifier;
+    }
+    else if (typeof value == "string") {
+      this._transformable.parent = value;
+    }
   };
   get parent() {
     return this._transformable.parent;
   };
   
-  getChildren() {
-    return this._transformable.children;
-  };
+  /**
+   * Child Objects
+   * @type {Actor[]}
+   */
+  children = [];
 
   /**
    * @param {Actor} child 
    */
   addChild(child) {
-    this._transformable.children.push(child);
+    let c;
+    if ((c = Scene.current.getActor(child.identifier)) != null) {
+      let p;
+      if ((p = c.getParent()) != null) {
+        p.removeChild(child.identifier);
+      }
+    }
+    this.children.push(child);
+    child.parent = this.identifier;
   }
 
   /**
    * @param {Actor} child 
    */
   removeChild(child) {
-    let removedChild = this._transformable.children.splice((() => {
-      for (let i = 0; i < this._transformable.children.length; i++) {
-        const _child = this._transformable.children[i];
+    let removedChild = this.children.splice((() => {
+      for (let i = 0; i < this.children.length; i++) {
+        const _child = this.children[i];
         if (_child == child) {
           return i;
         }
@@ -243,18 +280,40 @@ class Actor {
     return removedChild;
   }
 
-  draw() {
-    let x = this.x;
-    let y = this.y;
-    let width = this.width;
-    let height = this.height;
-    if (this.parent instanceof Actor) {
-      this.parent.draw();
-      x += this.parent.x;
-      y += this.parent.y;
+  getParent() {
+    return Scene.current.getActor(this.parent);
+  }
+
+  getAbsolutePosition(startX = 0, startY = 0) {
+    let pos = {
+      x: startX + this.x,
+      y: startY + this.y
+    }
+    let p;
+    if((p = this.getParent()) != null) {
+      // pos.x += p.x;
+      // pos.y += p.y;
+      pos = p.getAbsolutePosition(pos.x, pos.y);
     }
 
+    return pos;
+  }
+
+  draw() {
+    let pos = this.getAbsolutePosition();
+    let x = pos.x;
+    let y = pos.y;
+    let width = this.width;
+    let height = this.height;
+    
     ctx.fillRect(x, y, width, height);
+
+    if (this.children.length > 0) {
+      for (let i = 0; i < this.children.length; i++) {
+        const child = this.children[i];
+        child.draw();
+      }
+    }
   }
 }
 
@@ -282,34 +341,45 @@ Scene.current = new Scene({
   "sceneName": "A scene name",
   "actors": [
     new Actor({
-      "x" : 30,
-      "y" : 30,
-      "width" : 30,
-      "height" : 30,
+      "x" : 32,
+      "y" : 32,
+      "width" : 32,
+      "height" : 32,
       "identifier": "n word",
-      "_transformable": {
-        "children":[
-          new Actor({
-            "identifier": "A child element",
-            "x": 30
-          })
-        ]
-      }
+      "children":[
+        new Actor({
+          "identifier": "A child element",
+          "x": 32,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "children": [
+            {
+              "identifier": "What a moment",
+              "x": 32,
+              "y": 32,
+              "width" : 32,
+              "height" : 32,
+            }
+          ]
+        })
+      ]
     }),
     {
-      "x" : 30,
-      "y" : 69,
-      "width" : 30,
-      "height" : 30,
+      "x" : 32,
+      "y" : 128,
+      "width" : 32,
+      "height" : 32,
       "identifier": "another one",
-      "_transformable": {
-        "children":[
-          {
-            "identifier": "A child element no. 2",
-            "x": 30
-          }
-        ]
-      }
+      "children":[
+        {
+          "identifier": "A child element no. 2",
+          "x": 32,
+          "y": 32,
+          "width": 32,
+          "height": 32
+        }
+      ]
     }
   ]
 });
